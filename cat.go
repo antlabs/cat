@@ -9,36 +9,6 @@ import (
 	"strings"
 )
 
-func die(format string, a ...interface{}) {
-	fmt.Printf(format, a...)
-	os.Exit(1)
-}
-
-type file struct {
-	*os.File
-}
-
-func (f *file) Close() {
-	if f.File == os.Stdin {
-		return
-	}
-
-	f.File.Close()
-}
-
-func openFile(fileName string) (*file, error) {
-	if fileName == "-" {
-		return &file{File: os.Stdin}, nil
-	}
-
-	fd, err := os.Open(fileName)
-	if err != nil {
-		return nil, err
-	}
-
-	return &file{File: fd}, nil
-}
-
 type Cat struct {
 	ShowAll bool `clop:"-A; --show-all" usage:"equivalent to -vET"`
 
@@ -196,4 +166,34 @@ func (c *Cat) Main() {
 	}
 
 	c.Cat(os.Stdin, os.Stdout)
+}
+
+func die(format string, a ...interface{}) {
+	fmt.Printf(format, a...)
+	os.Exit(1)
+}
+
+type file struct {
+	*os.File
+}
+
+func (f *file) Close() {
+	if f.File == os.Stdin {
+		return
+	}
+
+	f.File.Close()
+}
+
+func openFile(fileName string) (*file, error) {
+	if fileName == "-" {
+		return &file{File: os.Stdin}, nil
+	}
+
+	fd, err := os.Open(fileName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &file{File: fd}, nil
 }
