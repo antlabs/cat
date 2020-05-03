@@ -4,17 +4,48 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/guonaihong/clop"
-	"github.com/guonaihong/coreutils/utils"
-	"github.com/guonaihong/flag"
 	"io"
 	"os"
 	"strings"
 )
 
+func die(format string, a ...interface{}) {
+	fmt.Printf(format, a...)
+	os.Exit(1)
+}
+
+type file struct {
+	*os.File
+}
+
+func (f *file) Close() {
+	if f.File == os.Stdin {
+		return
+	}
+
+	f.File.Close()
+}
+
+func openFile(fileName string) (*file, error) {
+	if fileName == "-" {
+		return &file{File: os.Stdin}, nil
+	}
+
+	fd, err := os.Open(fileName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &file{File: fd}, nil
+}
+
 type Cat struct {
-	NumberNonblank bool `clop:"-c;--number-nonblank"
+	ShowAll bool `clop:"-A; --show-all" usage:"equivalent to -vET"`
+
+	NumberNonblank bool `clop:"-b; --number-nonblank"
 	                     usage:"number nonempty output lines, overrides"`
+
+	E bool `clop:"-e"; usage:"equivalent to -vE"`
 
 	ShowEnds bool `clop:"-E;--show-ends"
 	               usage:"display $ at end of each line"`
@@ -22,10 +53,12 @@ type Cat struct {
 	Number bool `clop:"-n;--number"
 	             usage:"number all output lines"`
 
+	T bool `clop:"-t" usage:"equivalent to -vT" `
+
 	SqueezeBlank bool `clop:"-s;--squeeze-blank"
 	                   usage:"suppress repeated empty output lines"`
 
-	ShowTab bool `clop:"-T;--show-tabs"
+	ShowTabs bool `clop:"-T;--show-tabs"
 	              usage:"display TAB characters as ^I"`
 
 	ShowNonprinting bool `clop:"-v;--show-nonprinting"
@@ -61,37 +94,39 @@ func writeNonblank(l []byte) []byte {
 	return out.Bytes()
 }
 
-func New(argv []string) (*Cat, []string) {
-	c := Cat{}
+func (c *Cat) changOpt() {
 
-	clop.New(argv[1:]).SetProcess()
-	if *showAll {
+	if c.ShowAll {
 		c.ShowNonprinting = true
 		c.ShowEnds = true
 		c.ShowTabs = true
 	}
 
-	if *e {
+	if c.E {
 		c.ShowNonprinting = true
 		c.ShowEnds = true
 	}
-	if *t {
+
+	if c.T {
 		c.ShowNonprinting = true
 		c.ShowTabs = true
 	}
 
-	return &c, args
+	if c.ShowEnds {
+		c.setEnds()
+	}
+
+	if c.ShowTabs {
+		c.setTab()
+	}
+
 }
 
-func SetBool(v bool) *bool {
-	return &v
-}
-
-func (c *Cat) SetTab() {
+func (c *Cat) setTab() {
 	c.oldNew = append(c.oldNew, "\t", "^I")
 }
 
-func (c *Cat) SetEnds() {
+func (c *Cat) setEnds() {
 	c.oldNew = append(c.oldNew, "\n", "$\n")
 }
 
@@ -143,23 +178,15 @@ func (c *Cat) Cat(rs io.ReadSeeker, w io.Writer) {
 	}
 }
 
-func Main(argv []string) {
+func (c *Cat) Main() {
 
-	c, args := New(argv)
+	c.changOpt()
 
-	if c.ShowEnds {
-		c.SetEnds()
-	}
-
-	if c.ShowTabs {
-		c.SetTab()
-	}
-
-	if len(args) > 0 {
-		for _, fileName := range args {
-			f, err := utils.OpenFile(fileName)
+	if len(c.Files) > 0 {
+		for _, fileName := range c.Files {
+			f, err := openFile(fileName)
 			if err != nil {
-				utils.Die("cat: %s\n", err)
+				die("cat: %s\n", err)
 			}
 
 			c.Cat(f, os.Stdout)
