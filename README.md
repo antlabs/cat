@@ -3,7 +3,8 @@ cat 是golang 实现的cat命令，完成了cat命令的所有功能，对posix 
 
 ## install
 ```
-go build -o cat github.com/antlabs/cat/_cmd
+// go build -o cat github.com/antlabs/cat/_cmd
+env GOPROXY="goproxy.cn" go install github.com/antlabs/cat/cat@latest
 ```
 ## usage
 ```console
