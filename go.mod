@@ -1,5 +1,5 @@
 module github.com/antlabs/cat
 
-go 1.13
+go 1.18
 
-require github.com/guonaihong/clop v0.0.6 // indirect
+require github.com/guonaihong/clop v0.2.9
